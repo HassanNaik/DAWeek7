@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+from decimal import Decimal
 
 
 # The brief
@@ -60,34 +60,71 @@ df7['Days'] = 'Sunday'
 
 df = pd.concat([df1,df2,df3,df4,df5,df6,df7], ignore_index=True)
 
-df = df.set_index("Transaction ID")
-df = df.drop(columns=["Staff","Transaction Type","Basket"])
+# df = df.set_index("Transaction ID")
+# df = df.drop(columns=["Staff","Transaction Type","Basket","Transaction ID"])
+df = df.drop(columns=["Staff","Transaction Type","Transaction ID"])
 df = df.dropna(how="any" )
 
-df['Payment Method'] = df['Payment Method'].replace('cash', 'Cash')
-df['Payment Method'] = df['Payment Method'].replace('debit', 'Debit')
-                                                
+df['Payment Method'] = df['Payment Method'].str.capitalize()
+# df['Payment Method'] = df['Payment Method'].replace('cash', 'Cash')
+# df['Payment Method'] = df['Payment Method'].replace('debit', 'Debit')
 
-# def split_basket(basket_item):
-#     items = basket_item.split(",")
-#     stripped_items = [item.strip() for item in items]
+df = df.drop_duplicates()                                     
 
-#     return stripped_items
+def split_basket(basket_item):
+    items = basket_item.split(",")
+    stripped_items = [item.strip() for item in items]
 
-# df["Basket"] = df["Basket"].apply(split_basket)
-# exploded_data = df.explode("Basket", ignore_index=False)
+    return stripped_items
 
-# print(df)
+df["Basket"] = df["Basket"].apply(split_basket)
 
-# print(df.describe())
+exploded_data = df.explode("Basket", ignore_index=False)
 
-# print(df.info())
+# print(exploded_data["Basket"] )
 
+df.to_excel('combine.xlsx', index=False)
+            
+print(df)
 
-# print(df.value_counts('Payment Method'))
+print(exploded_data[exploded_data["Basket"] == 'Gift Voucher']['Cost'].sum())
+print(exploded_data[exploded_data["Basket"] == 'Gift Voucher']['Total Items'].sum())
+print(df[df['Payment Method'] == 'Voucher']['Cost'].sum())
+print(df['Cost'].sum())
+print(exploded_data["Basket"].value_counts())
+print(exploded_data["Basket"].count())
 
-plt.pie(df['Payment Method'], labels=df['Payment Method'], autopct='%1.1f%%'explode=[0.2,0.2,0.1,0.1])
-plt.show( )
+payment_costs = df.groupby('Payment Method')['Cost'].sum()
 
+print(payment_costs)
 
+# plt.pie(df['Payment Method'].value_counts().values, labels=df['Payment Method'].value_counts().index, autopct="%.2f%%", explode = [0, 0, 0, 0.1, 0])
+# plt.pie(df.groupby('Payment Method')['Cost'].sum(), labels=payment_costs.index, autopct=lambda p: f'£{round(p * sum(payment_costs) / 100):.2f}' if p > 0 else '')
+    
+# plt.title("Percentage of Vouchers used")
+
+basket_counts = exploded_data['Basket'].value_counts()
+
+# plt.bar(basket_counts.index, basket_counts.values)
+
+# plt.xlabel('Basket Items') 
+
+# plt.ylabel('Frequency') 
+
+# plt.title('Frequency of Basket Items')
+
+total_sales = basket_counts * basket_counts.index.map(products)
+if pd.isna(total_sales['Gift Voucher']): 
+    total_sales['Gift Voucher'] = exploded_data[exploded_data["Basket"] == 'Gift Voucher']['Cost'].sum()
+print(total_sales.sum())
+
+plt.bar(basket_counts.index, total_sales)
+plt.xlabel('Basket Items') 
+
+plt.ylabel('Cost in £') 
+
+plt.title('Total Cost of Basket Items')
+# plt.legend(loc="upper right",bbox_to_anchor=(1.3, 1) )
+
+plt.show()
 
